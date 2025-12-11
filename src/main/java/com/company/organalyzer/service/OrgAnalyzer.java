@@ -6,44 +6,57 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class OrgAnalyzer {
-    private final Map<String, Employee> employeesById;
+    private final Map<String, Employee> employeesMap;
 
     public OrgAnalyzer(Collection<Employee> employees) {
-        this.employeesById = new HashMap<>();
-        for (Employee e : employees) employeesById.put(e.getId(), e);
+        this.employeesMap = new HashMap<>();
+
+        for (Employee e : employees)
+            employeesMap.put(e.getId(), e);
+
         // build tree
         for (Employee e : employees) {
             if (e.getManagerId() != null) {
-                Employee m = employeesById.get(e.getManagerId());
-                if (m != null) m.addDirectReport(e);
+
+                Employee m = employeesMap.get(e.getManagerId());
+                if (m != null)
+                    m.addDirectReport(e); // add manager's direct reports
             }
         }
     }
 
     public Optional<Employee> findCEO() {
-        return employeesById.values().stream().filter(e -> e.getManagerId() == null).findFirst();
+        return employeesMap.values().stream().filter(e -> e.getManagerId() == null).findFirst();
     }
 
     public Map<Employee, Double> managersUnderpaid(double minFactor) {
+
         Map<Employee, Double> res = new LinkedHashMap<>();
-        for (Employee m : employeesById.values()) {
+
+        for (Employee m : employeesMap.values()) {
             List<Employee> dr = m.getDirectReports();
-            if (dr.isEmpty()) continue;
+            if (dr.isEmpty())
+                continue;
+            // compute average salary of direct reports
             double avg = dr.stream().mapToDouble(Employee::getSalary).average().orElse(0.0);
+            // compute minimum salary for manager
             double minSalary = avg * (1.0 + minFactor);
-            if (m.getSalary() < minSalary) res.put(m, minSalary - m.getSalary());
+            if (m.getSalary() < minSalary)
+                res.put(m, minSalary - m.getSalary());
         }
         return res;
     }
 
     public Map<Employee, Double> managersOverpaid(double maxFactor) {
         Map<Employee, Double> res = new LinkedHashMap<>();
-        for (Employee m : employeesById.values()) {
+        for (Employee m : employeesMap.values()) {
             List<Employee> dr = m.getDirectReports();
-            if (dr.isEmpty()) continue;
+            if (dr.isEmpty())
+                continue;
             double avg = dr.stream().mapToDouble(Employee::getSalary).average().orElse(0.0);
             double maxSalary = avg * (1.0 + maxFactor);
-            if (m.getSalary() > maxSalary) res.put(m, m.getSalary() - maxSalary);
+            if (m.getSalary() > maxSalary)
+                res.put(m, m.getSalary() - maxSalary);
         }
         return res;
     }
@@ -51,7 +64,8 @@ public class OrgAnalyzer {
     public Map<Employee, Integer> employeesWithLongReportingLine(int maxManagers) {
         Map<Employee, Integer> res = new LinkedHashMap<>();
         Optional<Employee> ceoOpt = findCEO();
-        if (ceoOpt.isEmpty()) return res;
+        if (ceoOpt.isEmpty())
+            return res;
         Employee ceo = ceoOpt.get();
         // compute depth (number of managers between employee and CEO)
         Map<String, Integer> depth = new HashMap<>();
@@ -68,13 +82,14 @@ public class OrgAnalyzer {
                 q.add(r);
             }
         }
-        for (Employee e : employeesById.values()) {
+        for (Employee e : employeesMap.values()) {
             int managersBetween = depth.getOrDefault(e.getId(), Integer.MAX_VALUE);
-            if (managersBetween > maxManagers) res.put(e, managersBetween - maxManagers);
+            if (managersBetween > maxManagers)
+                res.put(e, managersBetween - maxManagers);
         }
         return res.entrySet().stream()
                 .sorted(Comparator.comparingInt(Map.Entry::getValue))
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue,
-                        (a,b)->a, LinkedHashMap::new));
+                        (a, b) -> a, LinkedHashMap::new));
     }
 }
